@@ -31,3 +31,8 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
 ) {
   return db.query<T>(text, params);
 }
+
+/** PostgreSQL undefined_column — схема без миграции 002 (last_name / patronymic). */
+export function isPgUndefinedColumn(e: unknown): boolean {
+  return typeof e === "object" && e !== null && (e as { code?: string }).code === "42703";
+}

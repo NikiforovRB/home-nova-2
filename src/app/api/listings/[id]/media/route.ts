@@ -19,14 +19,22 @@ export async function POST(req: NextRequest, { params }: Params) {
   );
   const row = owner.rows[0];
   if (!row) return fail("Объявление не найдено", 404);
-  if (Number(row.user_id) !== auth.userId) return fail("Нет доступа", 403);
+  if (Number(row.user_id) !== Number(auth.userId)) return fail("Нет доступа", 403);
 
   const formData = await req.formData();
   const file = formData.get("file");
   if (!(file instanceof File)) return fail("Файл обязателен", 422);
 
   const bytes = Buffer.from(await file.arrayBuffer());
-  const upload = await uploadListingImage(bytes, file.type, listingId);
+  const contentType = file.type?.trim() || "application/octet-stream";
+
+  let upload: { originalKey: string; previewKey: string };
+  try {
+    upload = await uploadListingImage(bytes, contentType, listingId);
+  } catch (err) {
+    console.error("[media] S3 upload failed:", err);
+    return fail("Не удалось загрузить файл в хранилище S3", 502);
+  }
 
   const media = await query(
     `INSERT INTO listing_media (listing_id, original_key, preview_key, sort_order)

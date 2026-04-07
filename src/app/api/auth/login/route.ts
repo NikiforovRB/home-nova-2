@@ -36,7 +36,11 @@ export async function POST(req: NextRequest) {
   const isValid = await verifyPassword(password, user.password_hash);
   if (!isValid) return fail("Неверный email или пароль", 401);
 
-  const payload = { userId: user.id, email: user.email, role: user.role_code };
+  const payload = {
+    userId: Number(user.id),
+    email: user.email,
+    role: user.role_code,
+  };
   const accessToken = signAccessToken(payload);
   const refreshToken = signRefreshToken(payload);
   const refreshHash = hashRefreshToken(refreshToken);

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ListingHoverSlider } from "@/components/listing-hover-slider";
-import { formatPrice } from "@/lib/currencies";
+import { useCurrency } from "@/context/currency-context";
 import { listingDetailsLine } from "@/lib/listing-labels";
 import { buildListingPath } from "@/lib/listing-url";
 import { publicMediaUrlFromKey } from "@/lib/client-media";
@@ -23,12 +23,13 @@ export type ListingApiRow = {
 };
 
 type Props = {
-  variant: "home" | "catalog" | "mine";
+  variant: "home" | "catalog" | "mine" | "favorites";
   /** Доп. query: mode=buy и т.д. */
   extraQuery?: string;
 };
 
 export function ListingGrid({ variant, extraQuery = "" }: Props) {
+  const { formatListingPrice } = useCurrency();
   const [listings, setListings] = useState<ListingApiRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -48,6 +49,7 @@ export function ListingGrid({ variant, extraQuery = "" }: Props) {
       params.set("limit", String(limit));
       params.set("offset", String(off));
       if (variant === "mine") params.set("mine", "1");
+      if (variant === "favorites") return `/api/favorites/listings?${params.toString()}`;
       if (extraQuery) {
         const q = new URLSearchParams(extraQuery);
         q.forEach((v, k) => params.set(k, v));
@@ -69,7 +71,7 @@ export function ListingGrid({ variant, extraQuery = "" }: Props) {
           error?: string;
           data?: { listings?: ListingApiRow[] };
         };
-        if (variant === "mine" && res.status === 401) {
+        if ((variant === "mine" || variant === "favorites") && res.status === 401) {
           setError("NEED_LOGIN");
           return;
         }
@@ -110,7 +112,7 @@ export function ListingGrid({ variant, extraQuery = "" }: Props) {
       <div className={columns}>
         {Array.from({ length: variant === "home" ? 6 : 8 }).map((_, i) => (
           <div key={i} className="space-y-2">
-            <div className="skeleton aspect-[3/4] rounded-[8px]" />
+            <div className="skeleton aspect-[3/2] rounded-[8px]" />
             <div className="skeleton h-4 rounded-[8px]" />
             <div className="skeleton h-4 w-2/3 rounded-[8px]" />
           </div>
@@ -120,11 +122,12 @@ export function ListingGrid({ variant, extraQuery = "" }: Props) {
   }
 
   if (error === "NEED_LOGIN") {
+    const next = variant === "favorites" ? "/favorites" : "/my-listings";
     return (
       <p className="text-sm text-[#757575]">
-        Чтобы видеть свои объявления,{" "}
-        <Link href="/login?next=/my-listings" className="text-[#0c78ed] underline">
-          войдите в аккаунт
+        Войдите в аккаунт, чтобы продолжить:{" "}
+        <Link href={`/login?next=${encodeURIComponent(next)}`} className="text-[#0c78ed] underline">
+          Вход
         </Link>
         .
       </p>
@@ -140,7 +143,9 @@ export function ListingGrid({ variant, extraQuery = "" }: Props) {
       <p className="text-sm text-[#757575]">
         {variant === "mine"
           ? "У вас пока нет объявлений. Разместите первое — кнопка «Разместить объявление»."
-          : "Объявлений пока нет."}
+          : variant === "favorites"
+            ? "В избранном пока пусто."
+            : "Объявлений пока нет."}
       </p>
     );
   }
@@ -148,15 +153,16 @@ export function ListingGrid({ variant, extraQuery = "" }: Props) {
   return (
     <>
       <div className={columns}>
-        {listings.map((row) => {
+        {listings.map((row, index) => {
           const href = buildListingPath(Number(row.public_number), row.slug);
           const preview = publicMediaUrlFromKey(row.preview_key);
           const images = preview ? [preview] : [];
+          const lcpPriority = variant === "home" && index === 0 && images.length > 0;
           return (
             <article key={row.id} className="overflow-hidden rounded-[8px]">
               <div className="relative">
                 <Link href={href} className="block">
-                  <ListingHoverSlider images={images} alt={row.title} />
+                  <ListingHoverSlider images={images} alt={row.title} priority={lcpPriority} />
                 </Link>
                 <button
                   type="button"
@@ -171,7 +177,7 @@ export function ListingGrid({ variant, extraQuery = "" }: Props) {
                 <p className="text-sm text-[#444]">{listingDetailsLine(row)}</p>
                 <p className="text-sm text-[#757575]">{row.city}</p>
                 <p className="mt-1 font-semibold">
-                  {formatPrice(row.price, row.currency_code)}
+                  {formatListingPrice(row.price, row.currency_code)}
                 </p>
               </Link>
             </article>

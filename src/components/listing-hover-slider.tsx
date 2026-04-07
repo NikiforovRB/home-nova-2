@@ -6,9 +6,11 @@ import { useCallback, useMemo, useState } from "react";
 type Props = {
   images: string[];
   alt: string;
+  /** Первое изображение above-the-fold (LCP) */
+  priority?: boolean;
 };
 
-export function ListingHoverSlider({ images, alt }: Props) {
+export function ListingHoverSlider({ images, alt, priority = false }: Props) {
   const list = useMemo(() => images.filter(Boolean), [images]);
   const [active, setActive] = useState(0);
 
@@ -28,7 +30,7 @@ export function ListingHoverSlider({ images, alt }: Props) {
 
   if (list.length === 0) {
     return (
-      <div className="relative flex aspect-[3/4] items-center justify-center rounded-[8px] bg-[#f2f1f0] text-sm text-[#757575]">
+      <div className="relative flex aspect-[3/2] items-center justify-center rounded-[8px] bg-[#f2f1f0] text-sm text-[#757575]">
         Нет фото
       </div>
     );
@@ -36,15 +38,17 @@ export function ListingHoverSlider({ images, alt }: Props) {
 
   return (
     <div
-      className="relative aspect-[3/4] overflow-hidden rounded-[8px] bg-[#f2f1f0]"
+      className="relative flex aspect-[3/2] min-h-0 overflow-hidden rounded-[8px] bg-[#f2f1f0]"
       onMouseMove={onMove}
       onMouseLeave={onLeave}
     >
       <Image
         src={list[active]}
         alt={alt}
-        fill
-        className="object-cover"
+        width={1200}
+        height={800}
+        priority={priority}
+        className="h-full w-full min-h-0 min-w-0 object-cover"
         sizes="(max-width: 768px) 50vw, 16vw"
       />
     </div>

@@ -4,10 +4,12 @@ import { join } from "node:path";
 import { db } from "@/lib/db";
 
 async function run() {
-  const migrationPath = join(process.cwd(), "db", "migrations", "001_init.sql");
-  const sql = await readFile(migrationPath, "utf8");
-  await db.query(sql);
-  console.log("Migration 001_init.sql applied.");
+  const dir = join(process.cwd(), "db", "migrations");
+  for (const name of ["001_init.sql", "002_user_names.sql"]) {
+    const sql = await readFile(join(dir, name), "utf8");
+    await db.query(sql);
+    console.log(`Migration ${name} applied.`);
+  }
   await db.end();
 }
 

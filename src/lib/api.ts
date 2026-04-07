@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ZodSchema } from "zod";
-import { verifyToken } from "@/lib/security/jwt";
+import { verifyToken, type AuthPayload } from "@/lib/security/jwt";
 
 export function ok<T>(data: T, init?: ResponseInit) {
   return NextResponse.json({ ok: true, data }, init);
@@ -21,11 +21,19 @@ export async function parseJson<T>(req: NextRequest, schema: ZodSchema<T>) {
   return { data: parsed.data };
 }
 
-export function getAuthFromRequest(req: NextRequest) {
+/** JWT после verify может отдать userId строкой (BIGINT из PostgreSQL при выдаче токена). */
+export function getAuthFromRequest(req: NextRequest): AuthPayload | null {
   const token = req.cookies.get("homenova_access_token")?.value;
   if (!token) return null;
   try {
-    return verifyToken(token);
+    const raw = verifyToken(token) as AuthPayload & { userId?: unknown };
+    const userId = Number(raw.userId);
+    if (!Number.isFinite(userId)) return null;
+    return {
+      email: raw.email,
+      role: raw.role,
+      userId,
+    };
   } catch {
     return null;
   }

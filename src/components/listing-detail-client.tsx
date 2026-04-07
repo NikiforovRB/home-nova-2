@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { formatPrice } from "@/lib/currencies";
+import { useCurrency } from "@/context/currency-context";
 
 type Props = {
   listingId: number;
@@ -38,6 +38,7 @@ export function ListingDetailClient({
   previewUrls,
   originalUrls,
 }: Props) {
+  const { formatListingPrice } = useCurrency();
   const [active, setActive] = useState(0);
   const [phone, setPhone] = useState<string | null>(null);
   const [phoneLoading, setPhoneLoading] = useState(false);
@@ -51,10 +52,12 @@ export function ListingDetailClient({
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const me = await fetch("/api/me");
+      const me = await fetch("/api/me", { credentials: "include" });
       if (cancelled) return;
-      setAuthed(me.ok);
-      if (!me.ok) return;
+      const meJson = (await me.json()) as { ok?: boolean; data?: { user?: unknown } };
+      const loggedIn = Boolean(me.ok && meJson.ok && meJson.data?.user);
+      setAuthed(loggedIn);
+      if (!loggedIn) return;
       const st = await fetch(`/api/favorites/status?listingId=${listingId}`);
       if (cancelled || !st.ok) return;
       const payload = (await st.json()) as { ok?: boolean; data?: { favorite?: boolean } };
@@ -152,8 +155,9 @@ export function ListingDetailClient({
                   <Image
                     src={previewUrls[active]}
                     alt={title}
-                    fill
-                    className="object-cover"
+                    width={1920}
+                    height={1080}
+                    className="absolute inset-0 h-full w-full object-cover"
                     sizes="(max-width: 1024px) 100vw, 70vw"
                   />
                 </button>
@@ -167,7 +171,13 @@ export function ListingDetailClient({
                       }`}
                       onClick={() => setActive(index)}
                     >
-                      <Image src={src} alt="" fill className="object-cover" />
+                      <Image
+                        src={src}
+                        alt=""
+                        width={240}
+                        height={160}
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
                     </button>
                   ))}
                 </div>
@@ -191,7 +201,7 @@ export function ListingDetailClient({
         </div>
 
         <aside className="self-start rounded-[8px] border border-[#ececec] p-4 lg:sticky lg:top-4">
-          <p className="mb-2 text-3xl font-bold">{formatPrice(Number(price), currencyCode)}</p>
+          <p className="mb-2 text-3xl font-bold">{formatListingPrice(price, currencyCode)}</p>
           {discountComment && <p className="mb-3 text-sm text-[#757575]">{discountComment}</p>}
           <button
             type="button"

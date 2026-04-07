@@ -9,7 +9,7 @@ const bodySchema = z.object({
 
 export async function GET(req: NextRequest) {
   const auth = getAuthFromRequest(req);
-  if (!auth) return fail("Требуется авторизация", 401);
+  if (!auth) return ok({ count: 0 });
 
   const count = await query<{ c: string }>(
     "SELECT COUNT(*)::text AS c FROM favorites WHERE user_id = $1",

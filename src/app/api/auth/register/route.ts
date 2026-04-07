@@ -31,7 +31,11 @@ export async function POST(req: NextRequest) {
     [email, passwordHash, name, role.rows[0].id],
   );
 
-  const payload = { userId: inserted.rows[0].id, email, role: "user" as const };
+  const payload = {
+    userId: Number(inserted.rows[0].id),
+    email,
+    role: "user" as const,
+  };
   const accessToken = signAccessToken(payload);
   const refreshToken = signRefreshToken(payload);
   const refreshHash = hashRefreshToken(refreshToken);
