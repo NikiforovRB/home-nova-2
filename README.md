@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# HOMENOVA
 
-## Getting Started
+Платформа объявлений недвижимости: Next.js (App Router), PostgreSQL (SQL-миграции), S3, JWT.
 
-First, run the development server:
+## Запуск
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Откройте [http://localhost:3000](http://localhost:3000). Вход и регистрация: [http://localhost:3000/login](http://localhost:3000/login).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Переменные окружения
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+В корне используется `.env`. Для публичных URL медиа из S3 задайте:
 
-## Learn More
+- `NEXT_PUBLIC_MEDIA_BASE` — базовый URL бакета, например `https://s3.twcstorage.ru/имя-бакета`
 
-To learn more about Next.js, take a look at the following resources:
+## БД и SQL
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Миграция: `db/migrations/001_init.sql`
+- Применение: `npm run db:migrate`
+- Первый администратор: `npm run db:seed` (или `db/seed/001_admin.sql`)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Если у пользователя БД нет прав на `CREATE` в схеме `public`, выдайте права владельцем БД:
 
-## Deploy on Vercel
+```sql
+GRANT USAGE, CREATE ON SCHEMA public TO gen_user;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO gen_user;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO gen_user;
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Затем снова выполните `npm run db:migrate` и `npm run db:seed`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Маршруты
+
+- `/` — главная, фильтры, рекомендации
+- `/catalog` — каталог
+- `/listing/{publicNumber}-{slug}` — карточка объявления (ЧПУ)
+- `/login` — вход и регистрация
+- `/superadmin-lk` — панель администратора (роль `admin`)
+
+## Сборка
+
+```bash
+npm run build
+```
