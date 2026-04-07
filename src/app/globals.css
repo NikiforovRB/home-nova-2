@@ -2,25 +2,83 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #151515;
+  --muted: #757575;
+  --field-bg: #f2f1f0;
+  --field-border-edit: #c7c6c5;
+  --accent: #0c78ed;
+  --accent-hover: #2b89ef;
+  --radius-field: 8px;
+  --radius-button: 8px;
+  --footer-bg: #22262a;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-inter);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
+}
+
+a,
+button {
+  cursor: pointer;
+}
+
+.container-1600 {
+  max-width: 1600px;
+  margin-inline: auto;
+  padding-inline: 20px;
+}
+
+.field {
+  background: var(--field-bg);
+  border-radius: var(--radius-field);
+  border: 1px solid transparent;
+  min-height: 44px;
+  padding-inline: 12px;
+}
+
+.field:focus-within {
+  border-color: var(--field-border-edit);
+}
+
+.btn-accent {
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--radius-button);
+  min-height: 44px;
+  padding: 0 16px;
+  transition: background-color 0.2s ease;
+}
+
+.btn-accent:hover {
+  background: var(--accent-hover);
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #efefef 25%, #f8f8f8 50%, #efefef 75%);
+  background-size: 200% 100%;
+  animation: skeleton 1.3s linear infinite;
+}
+
+@keyframes skeleton {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+
+}
+
+@media (max-width: 768px) {
+  .container-1600 {
+    padding-inline: 12px;
+  }
 }
