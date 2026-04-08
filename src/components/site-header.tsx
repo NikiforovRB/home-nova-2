@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CatalogMenuDropdown } from "@/components/catalog-menu-dropdown";
+import { LocationPickerModal } from "@/components/location-picker-modal";
 import { useCurrency } from "@/context/currency-context";
+import { useLocationPreference } from "@/context/location-preference-context";
 import { publicMediaUrlFromKey } from "@/lib/client-media";
 
 const I = (p: string) => `/icons/${p}`;
@@ -17,38 +20,43 @@ async function readJsonBody<T>(res: Response): Promise<T | null> {
   }
 }
 
-function HoverIcon({
+function HeaderLinkIconPair({
   normal,
   hover,
-  alt,
-  className,
   width = 18,
   height = 18,
 }: {
   normal: string;
   hover: string;
-  alt: string;
-  className?: string;
   width?: number;
   height?: number;
 }) {
-  const [h, setH] = useState(false);
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={h ? hover : normal}
-      alt={alt}
-      width={width}
-      height={height}
-      className={className}
-      onMouseEnter={() => setH(true)}
-      onMouseLeave={() => setH(false)}
-    />
+    <span className="relative inline-flex shrink-0" style={{ width, height }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={normal}
+        alt=""
+        width={width}
+        height={height}
+        className="absolute inset-0 opacity-100 transition-opacity duration-150 group-hover:opacity-0"
+      />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={hover}
+        alt=""
+        width={width}
+        height={height}
+        className="absolute inset-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+      />
+    </span>
   );
 }
 
 export function SiteHeader() {
   const { displayCurrency, setDisplayCurrency } = useCurrency();
+  const { label: locationLabel } = useLocationPreference();
+  const [locationOpen, setLocationOpen] = useState(false);
   const [favCount, setFavCount] = useState(0);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [me, setMe] = useState<{
@@ -102,16 +110,20 @@ export function SiteHeader() {
 
   return (
     <header className="relative z-20 border-b border-[#ececec] bg-[var(--background)] py-4">
+      <LocationPickerModal open={locationOpen} onClose={() => setLocationOpen(false)} />
       <div className="container-1600 space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 py-[5px] text-sm">
           <button
             type="button"
-            className="group flex items-center gap-2 border-0 bg-transparent p-0"
+            className="group flex max-w-[min(100%,28rem)] items-center gap-2 border-0 bg-transparent p-0 text-left"
+            onClick={() => setLocationOpen(true)}
+            aria-haspopup="dialog"
+            aria-expanded={locationOpen}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={I("marker.svg")} alt="" width={20} height={20} className="shrink-0" />
-            <span className="text-[#a4a4a4] transition-colors group-hover:text-[#5A86EE]">
-              Москва
+            <span className="truncate text-[#a4a4a4] transition-colors group-hover:text-[#5A86EE]">
+              {locationLabel}
             </span>
           </button>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -130,16 +142,16 @@ export function SiteHeader() {
             </label>
             <Link
               href="/listing/new"
-              className="inline-flex items-center gap-2 border-0 bg-transparent px-0 py-0 text-[#a4a4a4] hover:text-[#5A86EE]"
+              className="group inline-flex items-center gap-1 border-0 bg-transparent px-0 py-0 text-[#a4a4a4] transition-colors hover:text-[#5A86EE]"
             >
-              <HoverIcon normal={I("add-document.svg")} hover={I("add-document-nav.svg")} alt="" />
+              <HeaderLinkIconPair normal={I("add-document.svg")} hover={I("add-document-nav.svg")} />
               <span>Разместить объявление</span>
             </Link>
             <Link
               href="/my-listings"
-              className="inline-flex items-center gap-2 border-0 bg-transparent px-0 py-0 text-[#a4a4a4] hover:text-[#5A86EE]"
+              className="group inline-flex items-center gap-1 border-0 bg-transparent px-0 py-0 text-[#a4a4a4] transition-colors hover:text-[#5A86EE]"
             >
-              <HoverIcon normal={I("beklog.svg")} hover={I("beklog-nav.svg")} alt="" />
+              <HeaderLinkIconPair normal={I("beklog.svg")} hover={I("beklog-nav.svg")} />
               <span>Мои объявления</span>
             </Link>
           </div>
@@ -154,42 +166,44 @@ export function SiteHeader() {
               className="h-8 w-auto max-w-[160px] object-contain md:h-9"
             />
           </Link>
-          <Link
-            href="/catalog"
-            className="btn-accent inline-flex items-center justify-center gap-2"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={I("catalog.svg")} alt="" width={18} height={18} className="shrink-0" />
-            Каталог
-          </Link>
-          <div className="field flex min-h-[44px] w-full min-w-0 items-stretch overflow-hidden p-0">
+          <CatalogMenuDropdown />
+          <div className="field -ml-[13px] flex min-h-[42px] w-full min-w-0 items-stretch overflow-hidden p-0">
             <input
-              className="min-h-[44px] min-w-0 flex-1 border-0 bg-transparent py-2 pl-3 pr-2 outline-none"
+              className="min-h-[42px] min-w-0 flex-1 border-0 bg-transparent py-2 pl-3 pr-2 outline-none"
               placeholder="Поиск по объявлениям"
             />
             <button
               type="button"
-              className="btn-accent shrink-0 self-stretch rounded-tl-none rounded-bl-none rounded-br-[8px] rounded-tr-[8px] px-4 py-0"
+              className="btn-accent translate-x-[13px] shrink-0 self-stretch rounded-tl-none rounded-bl-none rounded-br-[8px] rounded-tr-[8px] px-4 py-0"
             >
               Найти
             </button>
           </div>
           <Link
             href="/favorites"
-            className="relative inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#f2f1f0]"
+            className="group relative inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#f2f1f0]"
             aria-label="Избранное"
           >
-            <span className="flex items-center justify-center">
-              <HoverIcon
-                normal={I("favorite.svg")}
-                hover={I("favorite-nav.svg")}
+            <span className="relative inline-flex h-[22px] w-[22px] items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={I("favorite.svg")}
                 alt=""
                 width={22}
                 height={22}
+                className="absolute inset-0 opacity-100 transition-opacity duration-150 group-hover:opacity-0"
+              />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={I("favorite-nav.svg")}
+                alt=""
+                width={22}
+                height={22}
+                className="absolute inset-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100"
               />
             </span>
             {favCount > 0 && (
-              <span className="absolute right-0 top-0 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#22262a] px-1 text-[11px] text-white">
+              <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#22262a] px-1 text-[11px] text-white">
                 {favCount}
               </span>
             )}
@@ -211,7 +225,9 @@ export function SiteHeader() {
                 <img
                   src={I("user1.svg")}
                   alt=""
-                  className="h-full w-full object-contain p-1.5"
+                  width={22}
+                  height={22}
+                  className="h-[22px] w-[22px] object-contain"
                 />
               )}
             </button>

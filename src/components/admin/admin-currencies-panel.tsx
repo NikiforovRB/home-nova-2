@@ -1,0 +1,177 @@
+"use client";
+
+import { FormEvent, useCallback, useEffect, useState } from "react";
+import { useAdminUi } from "@/context/admin-ui-context";
+import { adminJsonResult } from "@/lib/admin-json-result";
+
+type RateRow = {
+  code: string;
+  name: string;
+  symbol: string;
+  rateToUsd: string;
+  updatedAt?: string;
+};
+
+export function AdminCurrenciesPanel() {
+  const { run } = useAdminUi();
+  const [rates, setRates] = useState<RateRow[]>([]);
+
+  const load = useCallback(async () => {
+    const r = await fetch("/api/admin/currencies", { credentials: "include" });
+    const j = (await r.json()) as { ok?: boolean; data?: { rates?: RateRow[] } };
+    if (j.ok && j.data?.rates) setRates(j.data.rates);
+  }, []);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      void load();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [load]);
+
+  async function onSave(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const payload = {
+      code: String(fd.get("code") ?? ""),
+      symbol: String(fd.get("symbol") ?? ""),
+      rateToUsd: Number(fd.get("rateToUsd") ?? 1),
+    };
+    await run(
+      async () => {
+        const r = await fetch("/api/admin/currencies", {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const out = await adminJsonResult(r);
+        if (out.ok) await load();
+        return out;
+      },
+      { ok: "Курс сохранён", fail: "Не удалось сохранить курс" },
+    );
+  }
+
+  async function onAdd(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const payload = {
+      code: String(fd.get("code") ?? "").toUpperCase(),
+      name: String(fd.get("name") ?? ""),
+      symbol: String(fd.get("symbol") ?? ""),
+      rateToUsd: Number(fd.get("rateToUsd") ?? 1),
+    };
+    const form = e.currentTarget;
+    await run(
+      async () => {
+        const r = await fetch("/api/admin/currencies", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const out = await adminJsonResult(r);
+        if (out.ok) {
+          form.reset();
+          await load();
+        }
+        return out;
+      },
+      { ok: "Валюта добавлена", fail: "Не удалось добавить валюту" },
+    );
+  }
+
+  async function onDelete(code: string) {
+    if (!confirm(`Удалить валюту ${code}?`)) return;
+    await run(
+      async () => {
+        const r = await fetch(
+          `/api/admin/currencies?code=${encodeURIComponent(code)}`,
+          { method: "DELETE", credentials: "include" },
+        );
+        const out = await adminJsonResult(r);
+        if (out.ok) await load();
+        return out;
+      },
+      { ok: "Валюта удалена", fail: "Не удалось удалить валюту" },
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      <section className="rounded-[8px] border border-[#ececec] p-4">
+        <h2 className="mb-4 text-lg font-semibold">Текущие курсы (к USD)</h2>
+        <div className="space-y-4">
+          {rates.map((row) => (
+            <form
+              key={row.code}
+              className="flex flex-wrap items-end gap-2 border-b border-[#ececec] pb-4"
+              onSubmit={onSave}
+            >
+              <input type="hidden" name="code" value={row.code} />
+              <div>
+                <label className="text-xs text-[#757575]">Код</label>
+                <div className="field min-w-[72px] bg-[#f2f1f0]">{row.code}</div>
+              </div>
+              <div>
+                <label className="text-xs text-[#757575]">Название</label>
+                <div className="text-sm">{row.name}</div>
+              </div>
+              <div>
+                <label className="text-xs text-[#757575]">Символ</label>
+                <input
+                  className="field w-20 outline-none"
+                  name="symbol"
+                  defaultValue={row.symbol}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-[#757575]">Курс к USD</label>
+                <input
+                  className="field w-36 outline-none"
+                  name="rateToUsd"
+                  type="number"
+                  step="any"
+                  min={0}
+                  required
+                  defaultValue={row.rateToUsd}
+                />
+              </div>
+              <button type="submit" className="btn-accent">
+                Сохранить
+              </button>
+              <button
+                type="button"
+                className="text-sm text-red-600 underline"
+                onClick={() => void onDelete(row.code)}
+              >
+                Удалить
+              </button>
+            </form>
+          ))}
+        </div>
+      </section>
+      <section className="rounded-[8px] border border-[#ececec] p-4">
+        <h2 className="mb-3 text-lg font-semibold">Новая валюта</h2>
+        <form className="flex flex-wrap gap-2" onSubmit={onAdd}>
+          <input className="field w-24 outline-none" name="code" placeholder="Код" required />
+          <input className="field min-w-[140px] outline-none" name="name" placeholder="Название" required />
+          <input className="field w-20 outline-none" name="symbol" placeholder="₿" required />
+          <input
+            className="field w-36 outline-none"
+            name="rateToUsd"
+            type="number"
+            step="any"
+            min={0}
+            placeholder="Курс к USD"
+            required
+          />
+          <button type="submit" className="btn-accent">
+            Добавить
+          </button>
+        </form>
+      </section>
+    </div>
+  );
+}

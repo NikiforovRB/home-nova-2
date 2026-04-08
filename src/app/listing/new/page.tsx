@@ -35,6 +35,12 @@ type PhotoRow = {
   uploadProgress: number;
 };
 
+function formatGroupedDigits(v: string) {
+  const clean = v.replace(/[^\d]/g, "");
+  if (!clean) return "";
+  return Number(clean).toLocaleString("ru-RU");
+}
+
 function Bar2pxDeterminate({ percent }: { percent: number }) {
   return (
     <div
@@ -84,6 +90,10 @@ export default function NewListingPage() {
   const [phone, setPhone] = useState("");
   const [discountComment, setDiscountComment] = useState("");
   const [photos, setPhotos] = useState<PhotoRow[]>([]);
+  const [filterDefs, setFilterDefs] = useState<
+    { id: string; fieldKey: string; label: string; fieldType: string; options?: string[] }[]
+  >([]);
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({});
 
   const processPhotoRead = useCallback(async (id: string, file: File) => {
     try {
@@ -170,6 +180,34 @@ export default function NewListingPage() {
     };
   }, [router]);
 
+  useEffect(() => {
+    let c = false;
+    (async () => {
+      const r = await fetch(
+        `/api/public/filters?propertyType=${encodeURIComponent(propertyType)}`,
+      );
+      const j = (await r.json()) as {
+        ok?: boolean;
+        data?: { filters?: typeof filterDefs };
+      };
+      if (c || !j.ok || !j.data?.filters) {
+        if (!c) setFilterDefs([]);
+        return;
+      }
+      setFilterDefs(j.data.filters);
+      setFilterValues((prev) => {
+        const next = { ...prev };
+        for (const k of Object.keys(next)) {
+          if (!j.data!.filters!.some((f) => f.fieldKey === k)) delete next[k];
+        }
+        return next;
+      });
+    })();
+    return () => {
+      c = true;
+    };
+  }, [propertyType]);
+
   const anyReading = photos.some((p) => p.isReading);
   const anyReadError = photos.some((p) => p.readError);
 
@@ -207,6 +245,7 @@ export default function NewListingPage() {
           cityId: Number(cityId),
           phone,
           discountComment: discountComment.trim() || undefined,
+          filterValues: Object.keys(filterValues).length ? filterValues : undefined,
         }),
       });
       const json = (await res.json()) as {
@@ -283,8 +322,8 @@ export default function NewListingPage() {
         {locations.length === 0 ? (
           <p className="text-sm text-[#757575]">
             В базе пока нет локаций. Добавьте город в админ-панели{" "}
-            <Link href="/superadmin-lk" className="text-[#0c78ed] underline">
-              /superadmin-lk
+            <Link href="/superadmin-lk/locations" className="text-[#0c78ed] underline">
+              админ-панели
             </Link>
             .
           </p>
@@ -340,6 +379,43 @@ export default function NewListingPage() {
                 </select>
               </div>
             </div>
+            {filterDefs.length > 0 && (
+              <div className="space-y-2 rounded-[8px] border border-[#ececec] p-3">
+                <p className="text-sm font-medium">Характеристики объекта</p>
+                {filterDefs.map((fd) => (
+                  <div key={fd.id}>
+                    <label className="mb-1 block text-xs text-[#757575]">{fd.label}</label>
+                    {fd.fieldType === "select" && fd.options?.length ? (
+                      <select
+                        className="field w-full outline-none"
+                        value={filterValues[fd.fieldKey] ?? ""}
+                        onChange={(e) =>
+                          setFilterValues((p) => ({ ...p, [fd.fieldKey]: e.target.value }))
+                        }
+                        disabled={saving}
+                      >
+                        <option value="">—</option>
+                        {fd.options.map((o) => (
+                          <option key={o} value={o}>
+                            {o}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        className="field w-full outline-none"
+                        type={fd.fieldType === "number" ? "number" : "text"}
+                        value={filterValues[fd.fieldKey] ?? ""}
+                        onChange={(e) =>
+                          setFilterValues((p) => ({ ...p, [fd.fieldKey]: e.target.value }))
+                        }
+                        disabled={saving}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
             <label className="block text-sm font-medium">Комнаты (необязательно)</label>
             <input
               className="field w-full outline-none"
@@ -354,11 +430,10 @@ export default function NewListingPage() {
                 <input
                   className="field mt-1 w-full outline-none"
                   required
-                  type="number"
-                  min={1}
-                  step="1"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
+                  type="text"
+                  inputMode="numeric"
+                  value={formatGroupedDigits(price)}
+                  onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ""))}
                   disabled={saving}
                 />
               </div>

@@ -7,7 +7,7 @@ import Link from "next/link";
 export function RecommendationsSection() {
   return (
     <section className="container-1600 pb-16">
-      <h2 className="mb-6 text-3xl font-semibold">Рекомендации для вас</h2>
+      <h2 className="mb-4 text-2xl font-normal">Рекомендации для вас</h2>
       <ListingGrid variant="home" />
     </section>
   );
@@ -17,7 +17,7 @@ export function SiteFooter() {
   return (
     <footer className="mt-auto bg-[#22262a] py-7 text-sm text-white">
       <div className="container-1600 flex flex-wrap items-center justify-between gap-4">
-        <span>©2026, Autonova</span>
+        <span>©2026, HOMENOVA</span>
         <div className="flex flex-wrap gap-4">
           <Link href="/privacy" className="hover:underline">
             Политика конфиденциальности

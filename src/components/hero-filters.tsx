@@ -6,7 +6,14 @@ import { DateRangeModal } from "@/components/custom-calendar";
 import { filterModes } from "@/lib/mock";
 import { useCurrency } from "@/context/currency-context";
 
-const ROOM_OPTIONS = ["1", "2", "3", "4", "5+", "Свободная планировка"] as const;
+const ROOM_OPTIONS_ROW1 = ["1", "2", "3", "4", "5+"] as const;
+const ROOM_OPTIONS_ROW2 = ["Студия", "Свободная планировка"] as const;
+
+function formatGroupedDigits(v: string) {
+  const clean = v.replace(/[^\d]/g, "");
+  if (!clean) return "";
+  return Number(clean).toLocaleString("ru-RU");
+}
 
 function toggleBtnClass(active: boolean) {
   const base =
@@ -14,7 +21,7 @@ function toggleBtnClass(active: boolean) {
   if (active) {
     return `${base} border-[#22262a] bg-[#f2f1f0] text-[#000000]`;
   }
-  return `${base} border-transparent text-[#151515] hover:border-[#a4a4a4]`;
+  return `${base} border-transparent bg-[#f2f1f0] text-[#151515] hover:border-[#a4a4a4]`;
 }
 
 export function HeroFilters() {
@@ -28,6 +35,8 @@ export function HeroFilters() {
   const [selectedRooms, setSelectedRooms] = useState<Set<string>>(new Set());
   const [priceFrom, setPriceFrom] = useState("");
   const [priceTo, setPriceTo] = useState("");
+  const [propertyTypeBuyLong, setPropertyTypeBuyLong] = useState("Квартиры");
+  const [propertyTypeDaily, setPropertyTypeDaily] = useState("Квартиры");
 
   const roomsRef = useRef<HTMLDivElement>(null);
   const priceRef = useRef<HTMLDivElement>(null);
@@ -56,9 +65,9 @@ export function HeroFilters() {
     const from = priceFrom.trim();
     const to = priceTo.trim();
     if (!from && !to) return "Цена";
-    if (from && !to) return `От ${from}`;
-    if (!from && to) return `До ${to}`;
-    return `${from} - ${to} ${sym}`;
+    if (from && !to) return `От ${formatGroupedDigits(from)}`;
+    if (!from && to) return `До ${formatGroupedDigits(to)}`;
+    return `${formatGroupedDigits(from)} - ${formatGroupedDigits(to)} ${sym}`;
   }, [priceFrom, priceTo, sym]);
 
   function toggleRoom(opt: string) {
@@ -90,8 +99,11 @@ export function HeroFilters() {
 
       {isBuyOrLong && (
         <div className="grid gap-3 md:grid-cols-4">
-          <select className="field w-full outline-none">
-            <option>Тип недвижимости</option>
+          <select
+            className="field w-full appearance-none bg-[url('/icons/down.svg')] bg-[right_12px_center] bg-no-repeat pr-8 outline-none"
+            value={propertyTypeBuyLong}
+            onChange={(e) => setPropertyTypeBuyLong(e.target.value)}
+          >
             <option>Квартиры</option>
             <option>Комнаты</option>
             <option>Дома, дачи, коттеджи</option>
@@ -111,22 +123,35 @@ export function HeroFilters() {
               aria-expanded={roomsOpen}
             >
               <span className="truncate">{roomsLabel}</span>
-              <span className="text-[#757575]" aria-hidden>
-                ▾
-              </span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/icons/down.svg" alt="" width={14} height={14} className="opacity-60" />
             </button>
             {roomsOpen && (
-              <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-40 flex flex-col gap-2 rounded-[8px] border border-[#ececec] bg-white p-3 shadow-md">
-                {ROOM_OPTIONS.map((opt) => (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => toggleRoom(opt)}
-                    className={toggleBtnClass(selectedRooms.has(opt))}
-                  >
-                    {opt}
-                  </button>
-                ))}
+              <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-40 space-y-2 rounded-[8px] border border-[#ececec] bg-white p-3 shadow-md">
+                <div className="flex flex-nowrap gap-2">
+                  {ROOM_OPTIONS_ROW1.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => toggleRoom(opt)}
+                      className={toggleBtnClass(selectedRooms.has(opt))}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {ROOM_OPTIONS_ROW2.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => toggleRoom(opt)}
+                      className={toggleBtnClass(selectedRooms.has(opt))}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -142,9 +167,8 @@ export function HeroFilters() {
               aria-expanded={priceOpen}
             >
               <span className="truncate">{priceLabel}</span>
-              <span className="text-[#757575]" aria-hidden>
-                ▾
-              </span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/icons/down.svg" alt="" width={14} height={14} className="opacity-60" />
             </button>
             {priceOpen && (
               <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-40 rounded-[8px] border border-[#ececec] bg-white p-3 shadow-md">
@@ -153,15 +177,15 @@ export function HeroFilters() {
                     className="field min-h-10 w-full flex-1 outline-none"
                     placeholder="От"
                     inputMode="numeric"
-                    value={priceFrom}
-                    onChange={(e) => setPriceFrom(e.target.value)}
+                    value={formatGroupedDigits(priceFrom)}
+                    onChange={(e) => setPriceFrom(e.target.value.replace(/[^\d]/g, ""))}
                   />
                   <input
                     className="field min-h-10 w-full flex-1 outline-none"
                     placeholder="До"
                     inputMode="numeric"
-                    value={priceTo}
-                    onChange={(e) => setPriceTo(e.target.value)}
+                    value={formatGroupedDigits(priceTo)}
+                    onChange={(e) => setPriceTo(e.target.value.replace(/[^\d]/g, ""))}
                   />
                 </div>
               </div>
@@ -176,8 +200,11 @@ export function HeroFilters() {
 
       {isDaily && (
         <div className="grid gap-3 md:grid-cols-4">
-          <select className="field w-full outline-none">
-            <option>Тип недвижимости</option>
+          <select
+            className="field w-full appearance-none bg-[url('/icons/down.svg')] bg-[right_12px_center] bg-no-repeat pr-8 outline-none"
+            value={propertyTypeDaily}
+            onChange={(e) => setPropertyTypeDaily(e.target.value)}
+          >
             <option>Квартиры</option>
             <option>Дома</option>
             <option>Комнаты</option>

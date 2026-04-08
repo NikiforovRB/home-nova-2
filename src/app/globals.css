@@ -50,6 +50,15 @@ button {
   border-color: var(--field-border-edit);
 }
 
+select.field,
+.field select {
+  appearance: none;
+  background-image: url("/icons/down.svg");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
 .btn-accent {
   background: var(--accent);
   color: #fff;

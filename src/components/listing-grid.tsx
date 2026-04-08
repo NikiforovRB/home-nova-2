@@ -1,12 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ListingHoverSlider } from "@/components/listing-hover-slider";
 import { useCurrency } from "@/context/currency-context";
 import { listingDetailsLine } from "@/lib/listing-labels";
 import { buildListingPath } from "@/lib/listing-url";
 import { publicMediaUrlFromKey } from "@/lib/client-media";
+
+const FAV_1 = "/icons/favorite-1.svg";
+const FAV_NAV = "/icons/favorite-nav.svg";
+const FAV_2 = "/icons/favorite-2.svg";
 
 export type ListingApiRow = {
   id: string;
@@ -19,7 +24,7 @@ export type ListingApiRow = {
   price: string;
   currency_code: string;
   city: string;
-  preview_key: string | null;
+  preview_keys?: string[];
 };
 
 type Props = {
@@ -29,8 +34,12 @@ type Props = {
 };
 
 export function ListingGrid({ variant, extraQuery = "" }: Props) {
+  const router = useRouter();
   const { formatListingPrice } = useCurrency();
   const [listings, setListings] = useState<ListingApiRow[]>([]);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [favoriteById, setFavoriteById] = useState<Record<string, boolean>>({});
+  const [authed, setAuthed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,11 +75,22 @@ export function ListingGrid({ variant, extraQuery = "" }: Props) {
       setError(null);
       try {
         const res = await fetch(buildUrl(off), { credentials: "include" });
-        const json = (await res.json()) as {
-          ok?: boolean;
-          error?: string;
-          data?: { listings?: ListingApiRow[] };
-        };
+        const json = (await res.json().catch(() => null)) as
+          | {
+              ok?: boolean;
+              error?: string;
+              data?: { listings?: ListingApiRow[] };
+            }
+          | null;
+        if (!json) {
+          if (variant === "home") {
+            setListings([]);
+            setHasMore(false);
+            return;
+          }
+          setError("Ошибка сети");
+          return;
+        }
         if ((variant === "mine" || variant === "favorites") && res.status === 401) {
           setError("NEED_LOGIN");
           return;
@@ -89,7 +109,12 @@ export function ListingGrid({ variant, extraQuery = "" }: Props) {
         }
         setHasMore(rows.length === limit);
       } catch {
-        setError("Ошибка сети");
+        if (variant === "home") {
+          setListings([]);
+          setHasMore(false);
+        } else {
+          setError("Ошибка сети");
+        }
       } finally {
         setLoading(false);
         setLoadingMore(false);
@@ -103,9 +128,90 @@ export function ListingGrid({ variant, extraQuery = "" }: Props) {
     load(0, false);
   }, [load, variant, extraQuery]);
 
+  useEffect(() => {
+    let c = false;
+    void (async () => {
+      const me = await fetch("/api/me", { credentials: "include" });
+      const j = (await me.json()) as { ok?: boolean; data?: { user?: unknown } };
+      if (!c) setAuthed(Boolean(me.ok && j.ok && j.data?.user));
+    })();
+    return () => {
+      c = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!listings.length || !authed) {
+      if (!authed) setFavoriteById({});
+      return;
+    }
+    let c = false;
+    const ids = listings.map((l) => l.id).join(",");
+    void (async () => {
+      const r = await fetch(`/api/favorites/status?listingIds=${encodeURIComponent(ids)}`, {
+        credentials: "include",
+      });
+      const j = (await r.json()) as {
+        ok?: boolean;
+        data?: { favorites?: Record<string, boolean> };
+      };
+      if (!c && r.ok && j.ok && j.data?.favorites) setFavoriteById(j.data.favorites);
+    })();
+    return () => {
+      c = true;
+    };
+  }, [listings, authed]);
+
   function loadMore() {
     load(nextOffsetRef.current, true);
   }
+
+  async function toggleFavorite(listingId: string, e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!authed) {
+      window.location.href = `/login?next=${encodeURIComponent(
+        `${window.location.pathname}${window.location.search}`,
+      )}`;
+      return;
+    }
+    const was = favoriteById[listingId];
+    const method = was ? "DELETE" : "POST";
+    const res = await fetch("/api/favorites", {
+      method,
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ listingId: Number(listingId) }),
+    });
+    if (res.ok) {
+      setFavoriteById((prev) => ({ ...prev, [listingId]: !was }));
+    }
+  }
+
+  const deleteListing = useCallback(
+    async (id: string) => {
+      if (!confirm("Удалить это объявление? Действие необратимо.")) return;
+      setDeletingId(id);
+      try {
+        const res = await fetch(`/api/listings/${id}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
+        const json = (await res.json()) as { ok?: boolean; error?: string };
+        if (!res.ok || !json.ok) {
+          alert(json.error ?? "Не удалось удалить объявление");
+          return;
+        }
+        setListings((prev) => prev.filter((r) => r.id !== id));
+        router.refresh();
+      } catch {
+        alert("Ошибка сети");
+      } finally {
+        setDeletingId(null);
+      }
+    },
+    [router],
+  );
 
   if (loading && listings.length === 0) {
     return (
@@ -155,8 +261,9 @@ export function ListingGrid({ variant, extraQuery = "" }: Props) {
       <div className={columns}>
         {listings.map((row, index) => {
           const href = buildListingPath(Number(row.public_number), row.slug);
-          const preview = publicMediaUrlFromKey(row.preview_key);
-          const images = preview ? [preview] : [];
+          const images = (row.preview_keys ?? [])
+            .map((k) => publicMediaUrlFromKey(k))
+            .filter((v): v is string => Boolean(v));
           const lcpPriority = variant === "home" && index === 0 && images.length > 0;
           return (
             <article key={row.id} className="overflow-hidden rounded-[8px]">
@@ -166,10 +273,34 @@ export function ListingGrid({ variant, extraQuery = "" }: Props) {
                 </Link>
                 <button
                   type="button"
-                  className="absolute right-2 top-2 z-10 rounded-full bg-white/90 px-2 py-1 text-xs"
-                  aria-label="В избранное"
+                  className="group/fav absolute right-2 top-2 z-10 border-0 bg-transparent p-0"
+                  aria-label={favoriteById[row.id] ? "Убрать из избранного" : "В избранное"}
+                  aria-pressed={favoriteById[row.id]}
+                  onClick={(e) => void toggleFavorite(row.id, e)}
                 >
-                  ❤
+                  {favoriteById[row.id] ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={FAV_2} alt="" width={22} height={22} className="block" />
+                  ) : (
+                    <span className="relative inline-flex h-[22px] w-[22px]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={FAV_1}
+                        alt=""
+                        width={22}
+                        height={22}
+                        className="absolute inset-0 opacity-100 transition-opacity duration-150 group-hover/fav:opacity-0"
+                      />
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={FAV_NAV}
+                        alt=""
+                        width={22}
+                        height={22}
+                        className="absolute inset-0 opacity-0 transition-opacity duration-150 group-hover/fav:opacity-100"
+                      />
+                    </span>
+                  )}
                 </button>
               </div>
               <Link href={href} className="block">
@@ -180,6 +311,24 @@ export function ListingGrid({ variant, extraQuery = "" }: Props) {
                   {formatListingPrice(row.price, row.currency_code)}
                 </p>
               </Link>
+              {variant === "mine" && (
+                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 border-t border-[#ececec] pt-3">
+                  <Link
+                    href={`/listing/edit/${row.id}`}
+                    className="text-sm text-[#0c78ed] underline hover:no-underline"
+                  >
+                    Редактировать объявление
+                  </Link>
+                  <button
+                    type="button"
+                    className="text-sm text-red-600 underline hover:no-underline disabled:opacity-50"
+                    disabled={deletingId === row.id}
+                    onClick={() => void deleteListing(row.id)}
+                  >
+                    {deletingId === row.id ? "Удаление…" : "Удалить объявление"}
+                  </button>
+                </div>
+              )}
             </article>
           );
         })}

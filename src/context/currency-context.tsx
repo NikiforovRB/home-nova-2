@@ -44,15 +44,24 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const res = await fetch("/api/public/rates");
-      const json = (await res.json()) as {
-        ok?: boolean;
-        data?: { rates?: Record<string, number>; symbols?: Record<string, string> };
-      };
-      if (cancelled || !json.ok || !json.data?.rates) return;
-      setRates(json.data.rates);
-      setSymbols(json.data.symbols ?? {});
-      setReady(true);
+      try {
+        const res = await fetch("/api/public/rates");
+        const json = (await res.json().catch(() => null)) as
+          | {
+              ok?: boolean;
+              data?: { rates?: Record<string, number>; symbols?: Record<string, string> };
+            }
+          | null;
+        if (cancelled || !json?.ok || !json.data?.rates) {
+          if (!cancelled) setReady(true);
+          return;
+        }
+        setRates(json.data.rates);
+        setSymbols(json.data.symbols ?? {});
+        setReady(true);
+      } catch {
+        if (!cancelled) setReady(true);
+      }
     })();
     return () => {
       cancelled = true;

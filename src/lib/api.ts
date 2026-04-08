@@ -11,7 +11,12 @@ export function fail(message: string, status = 400) {
 }
 
 export async function parseJson<T>(req: NextRequest, schema: ZodSchema<T>) {
-  const body = await req.json();
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return { error: fail("Некорректный JSON", 400) };
+  }
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
     return {
@@ -23,18 +28,29 @@ export async function parseJson<T>(req: NextRequest, schema: ZodSchema<T>) {
 
 /** JWT после verify может отдать userId строкой (BIGINT из PostgreSQL при выдаче токена). */
 export function getAuthFromRequest(req: NextRequest): AuthPayload | null {
-  const token = req.cookies.get("homenova_access_token")?.value;
-  if (!token) return null;
-  try {
-    const raw = verifyToken(token) as AuthPayload & { userId?: unknown };
-    const userId = Number(raw.userId);
-    if (!Number.isFinite(userId)) return null;
-    return {
-      email: raw.email,
-      role: raw.role,
-      userId,
-    };
-  } catch {
-    return null;
+  function fromToken(token: string | undefined): AuthPayload | null {
+    if (!token) return null;
+    try {
+      const raw = verifyToken(token) as AuthPayload & { userId?: unknown };
+      const userId = Number(raw.userId);
+      if (!Number.isFinite(userId)) return null;
+      return {
+        email: raw.email,
+        role: raw.role,
+        userId,
+      };
+    } catch {
+      return null;
+    }
   }
+
+  // Основной короткоживущий токен.
+  const access = fromToken(req.cookies.get("homenova_access_token")?.value);
+  if (access) return access;
+
+  // Fallback: если access протух, но refresh ещё жив — пользователь остаётся авторизованным.
+  const refresh = fromToken(req.cookies.get("homenova_refresh_token")?.value);
+  if (refresh) return refresh;
+
+  return null;
 }

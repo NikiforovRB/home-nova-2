@@ -30,6 +30,12 @@ export type ListingMediaRow = {
   sort_order: number;
 };
 
+export type ListingFilterDisplayRow = {
+  field_key: string;
+  label: string;
+  value: string;
+};
+
 export async function getListingByPublicNumberAndSlug(
   publicNumber: number,
   slug: string,
@@ -38,15 +44,18 @@ export async function getListingByPublicNumberAndSlug(
   listing: ListingRow;
   media: ListingMediaRow[];
   viewsDisplay: number;
+  filters: ListingFilterDisplayRow[];
 } | null> {
   const listingResult = await query<ListingRow>(
     `SELECT l.id, l.public_number, l.slug, l.title, l.description, l.mode, l.property_type, l.rooms,
             l.price::text, l.currency_code, l.discount_comment, l.phone, l.views_count::text, l.created_at,
             u.name AS author_name, u.avatar_url AS author_avatar_url,
-            loc.country, loc.region, loc.city
+            co.name AS country, r.name AS region, c.name AS city
      FROM listings l
      JOIN users u ON u.id = l.user_id
-     JOIN locations loc ON loc.id = l.city_id
+     JOIN cities c ON c.id = l.city_id
+     JOIN regions r ON r.id = c.region_id
+     JOIN countries co ON co.id = r.country_id
      WHERE l.public_number = $1 AND l.slug = $2
      LIMIT 1`,
     [publicNumber, slug],
@@ -68,5 +77,19 @@ export async function getListingByPublicNumberAndSlug(
     [listing.id],
   );
 
-  return { listing, media: mediaResult.rows, viewsDisplay };
+  const filtersResult = await query<ListingFilterDisplayRow>(
+    `SELECT pfd.field_key, pfd.label, lfv.value
+     FROM listing_filter_values lfv
+     JOIN property_filter_definitions pfd ON pfd.id = lfv.filter_def_id
+     WHERE lfv.listing_id = $1 AND TRIM(lfv.value) <> ''
+     ORDER BY pfd.sort_order, pfd.label`,
+    [listing.id],
+  );
+
+  return {
+    listing,
+    media: mediaResult.rows,
+    viewsDisplay,
+    filters: filtersResult.rows,
+  };
 }

@@ -11,8 +11,9 @@ type Props = {
 };
 
 export function ListingHoverSlider({ images, alt, priority = false }: Props) {
-  const list = useMemo(() => images.filter(Boolean), [images]);
+  const list = useMemo(() => images.filter(Boolean).slice(0, 8), [images]);
   const [active, setActive] = useState(0);
+  const [hovered, setHovered] = useState(false);
 
   const onMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -26,7 +27,10 @@ export function ListingHoverSlider({ images, alt, priority = false }: Props) {
     [list.length],
   );
 
-  const onLeave = useCallback(() => setActive(0), []);
+  const onLeave = useCallback(() => {
+    setActive(0);
+    setHovered(false);
+  }, []);
 
   if (list.length === 0) {
     return (
@@ -41,6 +45,7 @@ export function ListingHoverSlider({ images, alt, priority = false }: Props) {
       className="relative flex aspect-[3/2] min-h-0 overflow-hidden rounded-[8px] bg-[#f2f1f0]"
       onMouseMove={onMove}
       onMouseLeave={onLeave}
+      onMouseEnter={() => setHovered(true)}
     >
       <Image
         src={list[active]}
@@ -51,6 +56,16 @@ export function ListingHoverSlider({ images, alt, priority = false }: Props) {
         className="h-full w-full min-h-0 min-w-0 object-cover"
         sizes="(max-width: 768px) 50vw, 16vw"
       />
+      {list.length > 1 && hovered && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-2 z-10 flex justify-center gap-1.5">
+          {list.map((_, i) => (
+            <span
+              key={i}
+              className={`h-1.5 w-1.5 rounded-full ${i === active ? "bg-white" : "bg-white/50"}`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

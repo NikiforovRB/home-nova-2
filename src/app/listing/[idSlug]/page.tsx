@@ -54,7 +54,7 @@ export default async function ListingDetailPage({ params }: Props) {
   }
   if (!data) notFound();
 
-  const { listing, media, viewsDisplay } = data;
+  const { listing, media, viewsDisplay, filters } = data;
   const previewUrls = media.length ? media.map((m) => publicObjectUrl(m.preview_key)) : [];
   const originalUrls = media.length ? media.map((m) => publicObjectUrl(m.original_key)) : [];
 
@@ -86,6 +86,7 @@ export default async function ListingDetailPage({ params }: Props) {
             authorName={listing.author_name}
             previewUrls={previewUrls}
             originalUrls={originalUrls}
+            filterRows={filters.map((f) => ({ label: f.label, value: f.value }))}
           />
         </section>
       </main>

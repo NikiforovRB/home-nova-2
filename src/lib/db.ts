@@ -19,6 +19,8 @@ export const db =
         : {
             rejectUnauthorized: false,
           },
+    connectionTimeoutMillis: 5000,
+    keepAlive: true,
   });
 
 if (process.env.NODE_ENV !== "production") {
@@ -27,9 +29,25 @@ if (process.env.NODE_ENV !== "production") {
 
 export async function query<T extends QueryResultRow = QueryResultRow>(
   text: string,
-  params: Array<string | number | boolean | null | Date> = [],
+  params: Array<string | number | boolean | null | Date | string[] | number[]> = [],
 ) {
-  return db.query<T>(text, params);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await db.query<T>(text, params);
+    } catch (e) {
+      const err = e as { code?: string; message?: string };
+      const transient =
+        err?.code === "ETIMEDOUT" ||
+        err?.code === "ECONNRESET" ||
+        err?.code === "EPIPE" ||
+        err?.code === "57P01" ||
+        err?.message?.includes("Connection terminated unexpectedly") ||
+        err?.message?.includes("connection timeout");
+      if (!transient || attempt === 2) throw e;
+      await new Promise((r) => setTimeout(r, 150 * (attempt + 1)));
+    }
+  }
+  throw new Error("query retry exhausted");
 }
 
 /** PostgreSQL undefined_column — схема без миграции 002 (last_name / patronymic). */

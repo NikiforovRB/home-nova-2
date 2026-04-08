@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { ModalCloseButton } from "@/components/modal-close-button";
 
 function getMonthDays(base: Date) {
   const year = base.getFullYear();
@@ -147,12 +148,15 @@ export function DateRangeModal({ open, onClose }: { open: boolean; onClose: () =
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[8px] border border-[#e8e8e8] bg-white p-4 shadow-sm"
+        className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[8px] border border-[#e8e8e8] bg-white p-6 shadow-sm sm:p-8"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id={titleId} className="mb-3 text-lg font-semibold">
-          Даты
-        </h2>
+        <div className="mb-5 flex items-start justify-between gap-3">
+          <h2 id={titleId} className="text-lg font-semibold">
+            Даты
+          </h2>
+          <ModalCloseButton onClose={onClose} />
+        </div>
         <CalendarPanel />
         <button type="button" className="btn-accent mt-4 w-full" onClick={onClose}>
           Готово
