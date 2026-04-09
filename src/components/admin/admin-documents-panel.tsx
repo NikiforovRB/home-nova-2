@@ -48,16 +48,16 @@ export function AdminDocumentsPanel() {
     <div className="space-y-8">
       {docs.map((d) => (
         <section key={d.id} className="rounded-[8px] border border-[#ececec] p-4">
-          <h2 className="mb-3 text-lg font-semibold">{d.id}</h2>
+          <h2 className="mb-3 text-lg font-normal">{d.id}</h2>
           <form className="space-y-2" onSubmit={(e) => void onSave(e, d.id)}>
-            <label className="block text-sm font-medium">Заголовок</label>
+            <label className="block text-sm font-normal">Заголовок</label>
             <input
               className="field w-full outline-none"
               name="title"
               defaultValue={d.title}
               required
             />
-            <label className="block text-sm font-medium">Текст</label>
+            <label className="block text-sm font-normal">Текст</label>
             <textarea
               className="field min-h-[200px] w-full resize-y py-2 outline-none"
               name="body"

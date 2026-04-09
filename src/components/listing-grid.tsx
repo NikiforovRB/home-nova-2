@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { invalidateFavoritesCount } from "@/lib/favorites-invalidate";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ListingHoverSlider } from "@/components/listing-hover-slider";
@@ -185,6 +186,7 @@ export function ListingGrid({ variant, extraQuery = "" }: Props) {
     });
     if (res.ok) {
       setFavoriteById((prev) => ({ ...prev, [listingId]: !was }));
+      invalidateFavoritesCount();
     }
   }
 

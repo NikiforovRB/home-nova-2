@@ -1,4 +1,3 @@
-import { SiteFooter, SiteHeader } from "@/components/site";
 import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -10,15 +9,11 @@ export default async function PrivacyPage() {
   );
   const row = r.rows[0];
   return (
-    <>
-      <SiteHeader />
-      <main className="container-1600 py-10">
-        <h1 className="mb-4 text-2xl font-semibold">
-          {row?.title ?? "Политика конфиденциальности"}
-        </h1>
-        <div className="max-w-3xl whitespace-pre-wrap text-[#444]">{row?.body ?? ""}</div>
-      </main>
-      <SiteFooter />
-    </>
+    <main className="container-1600 py-10">
+      <h1 className="mb-4 text-2xl font-semibold">
+        {row?.title ?? "Политика конфиденциальности"}
+      </h1>
+      <div className="max-w-3xl whitespace-pre-wrap text-[#444]">{row?.body ?? ""}</div>
+    </main>
   );
 }

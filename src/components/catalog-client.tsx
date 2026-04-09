@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ListingGrid } from "@/components/listing-grid";
-import { SiteFooter, SiteHeader } from "@/components/site";
 import { FILTER_PROPERTY_TYPES } from "@/lib/property-types";
 
 type FilterDef = {
@@ -61,9 +60,7 @@ function CatalogClientInner() {
   }, [propertyType, filterVals, searchParams]);
 
   return (
-    <>
-      <SiteHeader />
-      <main className="container-1600 flex flex-1 flex-col gap-6 py-8 md:flex-row">
+    <main className="container-1600 flex flex-1 flex-col gap-6 py-8 md:flex-row">
         <aside className="w-full shrink-0 rounded-[8px] border border-[#ececec] p-4 md:w-[300px]">
           <h2 className="mb-3 text-lg font-semibold">Фильтры</h2>
           <label className="mb-1 block text-sm text-[#757575]">Тип недвижимости</label>
@@ -123,9 +120,7 @@ function CatalogClientInner() {
         <section className="min-w-0 flex-1">
           <ListingGrid variant="catalog" extraQuery={extraQuery} />
         </section>
-      </main>
-      <SiteFooter />
-    </>
+    </main>
   );
 }
 

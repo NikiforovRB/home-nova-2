@@ -7,6 +7,7 @@ import { LocationPickerModal } from "@/components/location-picker-modal";
 import { useCurrency } from "@/context/currency-context";
 import { useLocationPreference } from "@/context/location-preference-context";
 import { publicMediaUrlFromKey } from "@/lib/client-media";
+import { FAVORITES_COUNT_INVALIDATE } from "@/lib/favorites-invalidate";
 
 const I = (p: string) => `/icons/${p}`;
 
@@ -90,6 +91,14 @@ export function SiteHeader() {
     });
     return () => cancelAnimationFrame(id);
   }, [loadUserAndFavorites, userMenuOpen]);
+
+  useEffect(() => {
+    function onInvalidate() {
+      void loadUserAndFavorites();
+    }
+    window.addEventListener(FAVORITES_COUNT_INVALIDATE, onInvalidate);
+    return () => window.removeEventListener(FAVORITES_COUNT_INVALIDATE, onInvalidate);
+  }, [loadUserAndFavorites]);
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {

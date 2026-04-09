@@ -3,7 +3,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SiteFooter, SiteHeader } from "@/components/site";
 import { publicMediaUrlFromKey } from "@/lib/client-media";
 
 export default function ProfilePage() {
@@ -98,20 +97,14 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <>
-        <SiteHeader />
-        <main className="container-1600 py-10">
-          <div className="skeleton h-10 w-48 rounded-[8px]" />
-        </main>
-        <SiteFooter />
-      </>
+      <main className="container-1600 py-10">
+        <div className="skeleton h-10 w-48 rounded-[8px]" />
+      </main>
     );
   }
 
   return (
-    <>
-      <SiteHeader />
-      <main className="container-1600 max-w-lg py-10">
+    <main className="container-1600 max-w-lg py-10">
         <h1 className="mb-6 text-2xl font-semibold">Мой профиль</h1>
         <form className="space-y-3" onSubmit={onSubmit}>
           <div className="flex items-center gap-4">
@@ -153,8 +146,6 @@ export default function ProfilePage() {
             </Link>
           </div>
         </form>
-      </main>
-      <SiteFooter />
-    </>
+    </main>
   );
 }

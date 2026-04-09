@@ -125,7 +125,7 @@ export function AdminFiltersPanel() {
             className={`rounded-[8px] border-2 px-3 py-2 text-sm ${
               propertyType === t.value
                 ? "border-[#22262a] bg-[#f2f1f0]"
-                : "border-transparent hover:border-[#a4a4a4]"
+                : "border-transparent bg-[#f2f1f0] hover:border-[#a4a4a4]"
             }`}
           >
             {t.label}
@@ -133,7 +133,7 @@ export function AdminFiltersPanel() {
         ))}
       </div>
       <section className="rounded-[8px] border border-[#ececec] p-4">
-        <h2 className="mb-3 text-lg font-semibold">Новый фильтр</h2>
+        <h2 className="mb-3 text-lg font-normal">Новый фильтр</h2>
         <form className="grid gap-2 md:grid-cols-2" onSubmit={onAdd}>
           <input
             className="field outline-none"
@@ -167,7 +167,7 @@ export function AdminFiltersPanel() {
             className="flex flex-wrap items-center justify-between gap-2 rounded-[8px] border border-[#ececec] p-3 text-sm"
           >
             <div>
-              <span className="font-medium">{f.label}</span>{" "}
+              <span className="font-normal">{f.label}</span>{" "}
               <span className="text-[#757575]">
                 ({f.fieldKey}, {f.fieldType}
                 {f.options?.length ? `: ${f.options.join(", ")}` : ""})

@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ModalCloseButton } from "@/components/modal-close-button";
 import { useCurrency } from "@/context/currency-context";
+import { invalidateFavoritesCount } from "@/lib/favorites-invalidate";
 
 type Props = {
   listingId: number;
@@ -19,6 +20,7 @@ type Props = {
   createdAt: string;
   viewsDisplay: number;
   authorName: string;
+  authorAvatarUrl: string | null;
   previewUrls: string[];
   originalUrls: string[];
   filterRows?: { label: string; value: string }[];
@@ -37,6 +39,7 @@ export function ListingDetailClient({
   createdAt,
   viewsDisplay,
   authorName,
+  authorAvatarUrl,
   previewUrls,
   originalUrls,
   filterRows = [],
@@ -48,9 +51,11 @@ export function ListingDetailClient({
   const [favorite, setFavorite] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteText, setNoteText] = useState("");
+  const [savedNote, setSavedNote] = useState<string | null>(null);
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [thumbStart, setThumbStart] = useState(0);
+  const [closeHover, setCloseHover] = useState(false);
 
   const hasPhotos = previewUrls.length > 0;
   const thumbWindow = 6;
@@ -65,10 +70,19 @@ export function ListingDetailClient({
       const loggedIn = Boolean(me.ok && meJson.ok && meJson.data?.user);
       setAuthed(loggedIn);
       if (!loggedIn) return;
-      const st = await fetch(`/api/favorites/status?listingId=${listingId}`);
+      const st = await fetch(`/api/favorites/status?listingId=${listingId}`, { credentials: "include" });
       if (cancelled || !st.ok) return;
       const payload = (await st.json()) as { ok?: boolean; data?: { favorite?: boolean } };
       if (payload.ok && payload.data) setFavorite(!!payload.data.favorite);
+
+      const noteRes = await fetch(`/api/listings/${listingId}/notes`, { credentials: "include" });
+      if (cancelled || !noteRes.ok) return;
+      const noteJson = (await noteRes.json()) as { ok?: boolean; data?: { note?: string | null } };
+      if (noteJson.ok && noteJson.data && typeof noteJson.data.note === "string") {
+        setSavedNote(noteJson.data.note);
+      } else if (noteJson.ok && noteJson.data?.note === null) {
+        setSavedNote(null);
+      }
     })();
     return () => {
       cancelled = true;
@@ -84,6 +98,26 @@ export function ListingDetailClient({
     };
   }, [viewerOpen]);
 
+  useEffect(() => {
+    if (!viewerOpen || !hasPhotos) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setViewerOpen(false);
+      }
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        setActive((p) => (p <= 0 ? previewUrls.length - 1 : p - 1));
+      }
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        setActive((p) => (p >= previewUrls.length - 1 ? 0 : p + 1));
+      }
+    };
+    window.addEventListener("keydown", onKey, { capture: true });
+    return () => window.removeEventListener("keydown", onKey, { capture: true });
+  }, [viewerOpen, hasPhotos, previewUrls.length]);
+
   async function revealPhone() {
     setPhoneLoading(true);
     try {
@@ -98,21 +132,37 @@ export function ListingDetailClient({
   async function toggleFavorite() {
     if (!authed) return;
     const method = favorite ? "DELETE" : "POST";
-    await fetch("/api/favorites", {
+    const res = await fetch("/api/favorites", {
       method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ listingId }),
+      credentials: "include",
     });
+    if (!res.ok) return;
     setFavorite(!favorite);
+    invalidateFavoritesCount();
   }
 
+  const openNoteModal = useCallback(() => {
+    if (!authed) return;
+    setNoteText(savedNote ?? "");
+    setNoteOpen(true);
+  }, [authed, savedNote]);
+
   async function saveNote() {
-    await fetch(`/api/listings/${listingId}/notes`, {
+    const trimmed = noteText.trim();
+    if (!trimmed) return;
+    const res = await fetch(`/api/listings/${listingId}/notes`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ noteText }),
+      body: JSON.stringify({ noteText: trimmed }),
+      credentials: "include",
     });
-    setNoteOpen(false);
+    const json = (await res.json()) as { ok?: boolean };
+    if (json.ok) {
+      setSavedNote(trimmed);
+      setNoteOpen(false);
+    }
   }
 
   function prevPhoto() {
@@ -132,7 +182,7 @@ export function ListingDetailClient({
 
   return (
     <>
-      <div className="mb-3 bg-white text-sm">
+      <div className="mb-[22px] bg-white text-sm">
         <nav aria-label="Хлебные крошки" className="flex flex-wrap gap-2 text-[#757575]">
           <Link
             href="/"
@@ -184,7 +234,7 @@ export function ListingDetailClient({
             <button
               type="button"
               className="group inline-flex min-h-[44px] items-center gap-2 rounded-[8px] border border-transparent bg-[#f2f1f0] px-4 text-[#151515] transition-colors hover:text-[#5A86EE]"
-              onClick={() => authed && setNoteOpen(true)}
+              onClick={openNoteModal}
               disabled={!authed}
             >
               <span className="relative inline-flex h-4 w-4">
@@ -205,11 +255,23 @@ export function ListingDetailClient({
                   className="absolute inset-0 opacity-0 transition-opacity group-hover:opacity-100"
                 />
               </span>
-              Добавить заметку
+              {savedNote ? "Редактировать заметку" : "Добавить заметку"}
             </button>
           </div>
+
+          {savedNote && (
+            <div className="space-y-2">
+              <p className="text-sm text-[#a4a4a4]">Заметка (видна только вам)</p>
+              <div className="rounded-[8px] border border-[#dddcdb] bg-white px-3 py-2 text-[#151515] whitespace-pre-wrap">
+                {savedNote}
+              </div>
+            </div>
+          )}
+
           {!authed && authed !== null && (
-            <p className="text-sm text-[#757575]">Войдите, чтобы заметки и избранное работали.</p>
+            <p className="text-sm text-[#757575]">
+              Авторизуйтесь для добавления в избранное и редактирования заметок
+            </p>
           )}
 
           <div>
@@ -233,12 +295,13 @@ export function ListingDetailClient({
                 <div className="mt-2 flex items-center gap-2">
                   <button
                     type="button"
-                    className="field h-10 w-10 shrink-0 p-0"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.12)] outline-none ring-1 ring-[#ececec] disabled:opacity-40"
                     onClick={() => shiftThumbs(-1)}
                     disabled={thumbStart === 0}
                     aria-label="Прокрутить превью влево"
                   >
-                    ‹
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/icons/left.svg" alt="" width={20} height={20} />
                   </button>
                   <div className="min-w-0 flex-1 overflow-hidden">
                     <div className="flex gap-2">
@@ -269,12 +332,13 @@ export function ListingDetailClient({
                   </div>
                   <button
                     type="button"
-                    className="field h-10 w-10 shrink-0 p-0"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.12)] outline-none ring-1 ring-[#ececec] disabled:opacity-40"
                     onClick={() => shiftThumbs(1)}
                     disabled={thumbStart + thumbWindow >= previewUrls.length}
                     aria-label="Прокрутить превью вправо"
                   >
-                    ›
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/icons/right.svg" alt="" width={20} height={20} />
                   </button>
                 </div>
               </>
@@ -286,7 +350,7 @@ export function ListingDetailClient({
           </div>
 
           <div className="space-y-2">
-            <h1 className="text-3xl font-semibold">{title}</h1>
+            <h1 className="text-xl font-normal text-[#151515]">{title}</h1>
             <p>{characteristics}</p>
             <p>{locationLine}</p>
             {filterRows.length > 0 && (
@@ -300,14 +364,14 @@ export function ListingDetailClient({
               </dl>
             )}
             <p className="whitespace-pre-wrap">{description}</p>
-            <div className="mt-4 border-t border-[#a4a4a4] pt-3" />
+            <div className="mt-4 border-t border-[#dddcdb] pt-3" />
             <p className="text-sm text-[#757575]">
               №{publicNumber} • размещено {createdAt} • {viewsDisplay} просмотров
             </p>
           </div>
         </div>
 
-        <aside className="self-start rounded-[8px] border border-[#ececec] p-4 lg:sticky lg:top-4">
+        <aside className="self-start rounded-[8px] border border-[#dddcdb] p-4 lg:sticky lg:top-4">
           <p className="mb-2 text-3xl font-bold">{formatListingPrice(price, currencyCode)}</p>
           {discountComment && <p className="mb-3 text-sm text-[#757575]">{discountComment}</p>}
           <button
@@ -321,8 +385,20 @@ export function ListingDetailClient({
             {phone ? phone : phoneLoading ? "Загрузка…" : "Показать телефон"}
           </button>
           <div className="flex items-center gap-3">
-            <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#f2f1f0]">
-              👤
+            <span className="inline-flex h-12 w-12 shrink-0 overflow-hidden rounded-full bg-[#f2f1f0]">
+              {authorAvatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={authorAvatarUrl}
+                  alt=""
+                  width={48}
+                  height={48}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src="/icons/user1.svg" alt="" width={48} height={48} className="h-full w-full" />
+              )}
             </span>
             <div>
               <div className="font-medium">{authorName}</div>
@@ -364,50 +440,72 @@ export function ListingDetailClient({
       )}
       {viewerOpen && hasPhotos && (
         <div
-          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-4"
+          className="fixed inset-0 z-[120] flex flex-col overscroll-contain bg-black/80"
           role="dialog"
           aria-modal="true"
           aria-label="Слайдер фотографий"
+          onWheel={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setViewerOpen(false);
           }}
         >
-          <div className="relative w-full max-w-6xl">
-            <div className="absolute right-0 top-0 z-10">
-              <ModalCloseButton onClose={() => setViewerOpen(false)} />
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-0 py-4">
+            <div className="relative w-full max-w-none">
+              <div className="relative aspect-video w-full overflow-hidden rounded-[8px] bg-black">
+                <Image
+                  src={originalUrls[active] ?? previewUrls[active]}
+                  alt={title}
+                  fill
+                  className="object-contain"
+                  sizes="100vw"
+                  priority
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.2)] outline-none ring-1 ring-black/5"
+                  onClick={() => setViewerOpen(false)}
+                  aria-label="Закрыть"
+                  onMouseEnter={() => setCloseHover(true)}
+                  onMouseLeave={() => setCloseHover(false)}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={closeHover ? "/icons/close-nav.svg" : "/icons/close.svg"}
+                    alt=""
+                    width={22}
+                    height={22}
+                  />
+                </button>
+                {previewUrls.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      className="absolute left-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.2)] outline-none ring-1 ring-black/5"
+                      onClick={prevPhoto}
+                      aria-label="Предыдущее фото"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/icons/left.svg" alt="" width={22} height={22} />
+                    </button>
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.2)] outline-none ring-1 ring-black/5"
+                      aria-label="Следующее фото"
+                      onClick={nextPhoto}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/icons/right.svg" alt="" width={22} height={22} />
+                    </button>
+                  </>
+                )}
+              </div>
+              <p className="mt-3 text-center text-sm text-white">
+                Фото {active + 1} из {previewUrls.length}
+              </p>
             </div>
-            <div className="relative aspect-video overflow-hidden rounded-[8px]">
-              <Image
-                src={originalUrls[active] ?? previewUrls[active]}
-                alt={title}
-                fill
-                className="object-contain"
-                sizes="90vw"
-              />
-              {previewUrls.length > 1 && (
-                <>
-                  <button
-                    type="button"
-                    className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/45 px-3 py-2 text-xl text-white"
-                    onClick={prevPhoto}
-                    aria-label="Предыдущее фото"
-                  >
-                    ‹
-                  </button>
-                  <button
-                    type="button"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/45 px-3 py-2 text-xl text-white"
-                    onClick={nextPhoto}
-                    aria-label="Следующее фото"
-                  >
-                    ›
-                  </button>
-                </>
-              )}
-            </div>
-            <p className="mt-3 text-center text-sm text-white">
-              Фото {active + 1} из {previewUrls.length}
-            </p>
           </div>
         </div>
       )}

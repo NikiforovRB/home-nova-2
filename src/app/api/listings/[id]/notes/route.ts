@@ -9,6 +9,22 @@ const noteSchema = z.object({
 
 type Params = { params: Promise<{ id: string }> };
 
+export async function GET(req: NextRequest, { params }: Params) {
+  const auth = getAuthFromRequest(req);
+  if (!auth) return ok({ note: null });
+
+  const { id } = await params;
+  const listingId = Number(id);
+  if (!Number.isFinite(listingId)) return fail("Некорректный id", 422);
+
+  const r = await query<{ note_text: string }>(
+    `SELECT note_text FROM notes WHERE user_id = $1 AND listing_id = $2 LIMIT 1`,
+    [auth.userId, listingId],
+  );
+  const note = r.rows[0]?.note_text ?? null;
+  return ok({ note });
+}
+
 export async function POST(req: NextRequest, { params }: Params) {
   const auth = getAuthFromRequest(req);
   if (!auth) return fail("Требуется авторизация", 401);

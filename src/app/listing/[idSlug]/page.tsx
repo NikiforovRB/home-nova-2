@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ListingDetailClient } from "@/components/listing-detail-client";
-import { SiteFooter, SiteHeader } from "@/components/site";
 import { listingDetailsLine } from "@/lib/listing-labels";
 import { parseListingIdSlug } from "@/lib/listing-url";
 import { getListingByPublicNumberAndSlug } from "@/lib/listings/get-listing";
@@ -57,6 +56,9 @@ export default async function ListingDetailPage({ params }: Props) {
   const { listing, media, viewsDisplay, filters } = data;
   const previewUrls = media.length ? media.map((m) => publicObjectUrl(m.preview_key)) : [];
   const originalUrls = media.length ? media.map((m) => publicObjectUrl(m.original_key)) : [];
+  const authorAvatarUrl = listing.author_avatar_url
+    ? publicObjectUrl(listing.author_avatar_url)
+    : null;
 
   const characteristics = listingDetailsLine({
     property_type: listing.property_type,
@@ -67,11 +69,9 @@ export default async function ListingDetailPage({ params }: Props) {
   const createdAt = new Date(listing.created_at).toLocaleString("ru-RU");
 
   return (
-    <>
-      <SiteHeader />
-      <main className="flex-1">
-        <section className="container-1600 py-8">
-          <ListingDetailClient
+    <main className="flex-1">
+      <section className="container-1600 py-8">
+        <ListingDetailClient
             listingId={Number(listing.id)}
             title={listing.title}
             description={listing.description}
@@ -84,13 +84,12 @@ export default async function ListingDetailPage({ params }: Props) {
             createdAt={createdAt}
             viewsDisplay={viewsDisplay}
             authorName={listing.author_name}
+            authorAvatarUrl={authorAvatarUrl}
             previewUrls={previewUrls}
             originalUrls={originalUrls}
             filterRows={filters.map((f) => ({ label: f.label, value: f.value }))}
           />
-        </section>
-      </main>
-      <SiteFooter />
-    </>
+      </section>
+    </main>
   );
 }

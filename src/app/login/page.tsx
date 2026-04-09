@@ -3,8 +3,6 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { SiteFooter, SiteHeader } from "@/components/site";
-
 export default function LoginPage() {
   const searchParams = useSearchParams();
   const nextPath = searchParams.get("next");
@@ -42,9 +40,7 @@ export default function LoginPage() {
   }
 
   return (
-    <>
-      <SiteHeader />
-      <main className="container-1600 flex-1 py-10">
+    <main className="container-1600 flex-1 py-10">
         <h1 className="mb-6 text-2xl font-semibold">Вход и регистрация</h1>
         <div className="grid gap-8 md:grid-cols-2">
           <form className="space-y-2" onSubmit={onLogin}>
@@ -106,7 +102,5 @@ export default function LoginPage() {
           </Link>
         </p>
       </main>
-      <SiteFooter />
-    </>
   );
 }

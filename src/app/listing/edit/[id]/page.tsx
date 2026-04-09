@@ -4,7 +4,6 @@ import Image from "next/image";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { SiteFooter, SiteHeader } from "@/components/site";
 import {
   postFormDataWithProgress,
   readFileAsDataURLWithProgress,
@@ -361,20 +360,14 @@ export default function EditListingPage() {
 
   if (loading) {
     return (
-      <>
-        <SiteHeader />
-        <main className="container-1600 py-10">
-          <div className="skeleton h-10 w-64 rounded-[8px]" />
-        </main>
-        <SiteFooter />
-      </>
+      <main className="container-1600 py-10">
+        <div className="skeleton h-10 w-64 rounded-[8px]" />
+      </main>
     );
   }
 
   return (
-    <>
-      <SiteHeader />
-      <main className="container-1600 max-w-3xl py-10">
+    <main className="container-1600 max-w-3xl py-10">
         <h1 className="mb-6 text-2xl font-semibold">Редактировать объявление</h1>
         {locations.length === 0 ? (
           <p className="text-sm text-[#757575]">
@@ -640,8 +633,6 @@ export default function EditListingPage() {
             </div>
           </form>
         )}
-      </main>
-      <SiteFooter />
-    </>
+    </main>
   );
 }

@@ -101,25 +101,25 @@ export function AdminCurrenciesPanel() {
   return (
     <div className="space-y-8">
       <section className="rounded-[8px] border border-[#ececec] p-4">
-        <h2 className="mb-4 text-lg font-semibold">Текущие курсы (к USD)</h2>
-        <div className="space-y-4">
+        <h2 className="mb-4 text-lg font-normal">Текущие курсы (к USD)</h2>
+        <div className="space-y-6">
           {rates.map((row) => (
             <form
               key={row.code}
-              className="flex flex-wrap items-end gap-2 border-b border-[#ececec] pb-4"
+              className="flex flex-wrap items-end gap-x-6 gap-y-3 border-b border-[#ececec] pb-6"
               onSubmit={onSave}
             >
               <input type="hidden" name="code" value={row.code} />
               <div>
-                <label className="text-xs text-[#757575]">Код</label>
+                <label className="mb-1 block text-xs text-[#757575]">Код</label>
                 <div className="field min-w-[72px] bg-[#f2f1f0]">{row.code}</div>
               </div>
               <div>
-                <label className="text-xs text-[#757575]">Название</label>
+                <label className="mb-1 block text-xs text-[#757575]">Название</label>
                 <div className="text-sm">{row.name}</div>
               </div>
               <div>
-                <label className="text-xs text-[#757575]">Символ</label>
+                <label className="mb-1 block text-xs text-[#757575]">Символ</label>
                 <input
                   className="field w-20 outline-none"
                   name="symbol"
@@ -127,7 +127,7 @@ export function AdminCurrenciesPanel() {
                 />
               </div>
               <div>
-                <label className="text-xs text-[#757575]">Курс к USD</label>
+                <label className="mb-1 block text-xs text-[#757575]">Курс к USD</label>
                 <input
                   className="field w-36 outline-none"
                   name="rateToUsd"
@@ -138,35 +138,69 @@ export function AdminCurrenciesPanel() {
                   defaultValue={row.rateToUsd}
                 />
               </div>
-              <button type="submit" className="btn-accent">
-                Сохранить
-              </button>
-              <button
-                type="button"
-                className="text-sm text-red-600 underline"
-                onClick={() => void onDelete(row.code)}
-              >
-                Удалить
-              </button>
+              <div className="flex items-center gap-2 self-end">
+                <button type="submit" className="btn-accent inline-flex items-center justify-center gap-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/icons/save-white.svg" alt="" width={16} height={16} className="shrink-0" />
+                  Сохранить
+                </button>
+                <button
+                  type="button"
+                  className="group inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[8px] border border-transparent text-[#151515] outline-none transition-colors hover:bg-[#f2f1f0]"
+                  aria-label={`Удалить валюту ${row.code}`}
+                  onClick={() => void onDelete(row.code)}
+                >
+                  <span className="relative inline-block h-5 w-5">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/icons/delete.svg"
+                      alt=""
+                      width={20}
+                      height={20}
+                      className="absolute inset-0 opacity-100 transition-opacity group-hover:opacity-0"
+                    />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/icons/delete-nav.svg"
+                      alt=""
+                      width={20}
+                      height={20}
+                      className="absolute inset-0 opacity-0 transition-opacity group-hover:opacity-100"
+                    />
+                  </span>
+                </button>
+              </div>
             </form>
           ))}
         </div>
       </section>
       <section className="rounded-[8px] border border-[#ececec] p-4">
-        <h2 className="mb-3 text-lg font-semibold">Новая валюта</h2>
-        <form className="flex flex-wrap gap-2" onSubmit={onAdd}>
-          <input className="field w-24 outline-none" name="code" placeholder="Код" required />
-          <input className="field min-w-[140px] outline-none" name="name" placeholder="Название" required />
-          <input className="field w-20 outline-none" name="symbol" placeholder="₿" required />
-          <input
-            className="field w-36 outline-none"
-            name="rateToUsd"
-            type="number"
-            step="any"
-            min={0}
-            placeholder="Курс к USD"
-            required
-          />
+        <h2 className="mb-3 text-lg font-normal">Новая валюта</h2>
+        <form className="flex flex-wrap items-end gap-x-6 gap-y-3" onSubmit={onAdd}>
+          <div>
+            <label className="mb-1 block text-xs text-[#757575]">Код</label>
+            <input className="field w-24 outline-none" name="code" placeholder="Код" required />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-[#757575]">Название</label>
+            <input className="field min-w-[140px] outline-none" name="name" placeholder="Название" required />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-[#757575]">Символ</label>
+            <input className="field w-20 outline-none" name="symbol" placeholder="₿" required />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-[#757575]">Курс к USD</label>
+            <input
+              className="field w-36 outline-none"
+              name="rateToUsd"
+              type="number"
+              step="any"
+              min={0}
+              placeholder="1"
+              required
+            />
+          </div>
           <button type="submit" className="btn-accent">
             Добавить
           </button>
